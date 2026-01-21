@@ -142,3 +142,48 @@ class SmartServiceConnector:
 
         return None
 
+    def get_last_door_access(
+        self,
+        id: str,
+        access_type: str = "",
+    ) -> Optional[str]:
+        if not self.session_key:
+            if not self.login():
+                return None
+
+        try:
+            url = f"{BASE_URL}/LastDoorAccess?sdKey={self.session_key}&id={id}"
+            if access_type:
+                url += f"&accessType={access_type}"
+
+            response = requests.get(url, timeout=10)
+
+            if response.status_code == 200:
+                return response.text
+            else:
+                print(
+                    f"Get last door access failed. Status: {response.status_code}, Body: {response.text}"
+                )
+        except Exception as e:
+            print(f"Get last door access exception: {e}")
+
+        return None
+
+    def get_doors(self) -> Optional[str]:
+        if not self.session_key:
+            if not self.login():
+                return None
+
+        try:
+            url = f"{BASE_URL}/Doors?sdKey={self.session_key}"
+            response = requests.get(url, timeout=10)
+
+            if response.status_code == 200:
+                return response.text
+            else:
+                print(f"Get doors failed. Status: {response.status_code}, Body: {response.text}")
+        except Exception as e:
+            print(f"Get doors exception: {e}")
+
+        return None
+

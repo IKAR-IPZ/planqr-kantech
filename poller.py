@@ -15,7 +15,7 @@ class EventPoller:
         print(f"Starting poller with interval: {POLL_INTERVAL}s")
         
         try:
-            card_types = self.connector.list_cards()
+            card_types = self.connector.get_doors()
             if card_types:
                 print(card_types)
             else:
@@ -25,7 +25,7 @@ class EventPoller:
         
         while self.running:
             try:
-                card_data = self.connector.get_card("70321")
+                card_data = self.connector.get_last_door_access("49919", 0)
                 
                 if card_data:
                     print(card_data)
