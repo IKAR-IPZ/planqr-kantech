@@ -3,8 +3,8 @@ import xml.etree.ElementTree as ET
 import time
 import re
 from typing import List, Optional
-from .config import BASE_URL, USERNAME, PASSWORD, EVENTS_ENDPOINT
-from .models import CardEvent
+from config import BASE_URL, USERNAME, PASSWORD
+from models import CardEvent
 from datetime import datetime
 
 class SmartServiceConnector:
@@ -37,48 +37,108 @@ class SmartServiceConnector:
         
         return False
 
-    def get_events(self) -> List[CardEvent]:
+    def logout(self) -> bool:
+        if not self.session_key:
+            return True
+        
+        try:
+            url = f"{BASE_URL}/Logout?sdKey={self.session_key}"
+            print(f"Logging out...")
+            response = requests.get(url, timeout=10)
+            
+            if response.status_code == 200:
+                print("Logout successful.")
+                self.session_key = None
+                return True
+            else:
+                print(f"Logout failed. Status: {response.status_code}")
+        except Exception as e:
+            print(f"Logout exception: {e}")
+        
+        return False
+
+    def get_card(self, card_id: str) -> Optional[str]:
         if not self.session_key:
             if not self.login():
-                return []
-
-        events = []
+                return None
+        
         try:
-            url = f"{BASE_URL}/{EVENTS_ENDPOINT}?sdKey={self.session_key}"
+            url = f"{BASE_URL}/Cards/{card_id}?sdKey={self.session_key}"
             response = requests.get(url, timeout=10)
+            
+            if response.status_code == 200:
+                return response.text
+            else:
+                print(f"Get card failed. Status: {response.status_code}")
+        except Exception as e:
+            print(f"Get card exception: {e}")
+        
+        return None
+    
+    def get_card_types(self) -> Optional[str]:
+        if not self.session_key:
+            if not self.login():
+                return None
+        
+        try:
+            url = f"{BASE_URL}/CardTypes/?sdKey={self.session_key}"
+            response = requests.get(url, timeout=10)
+            
+            if response.status_code == 200:
+                return response.text
+            else:
+                print(f"Get card types failed. Status: {response.status_code}, Body: {response.text}")
+        except Exception as e:
+            print(f"Get card types exception: {e}")
+        
+        return None
 
-            if response.status_code == 401 or response.status_code == 403:
-                print("Session expired. Re-logging...")
-                self.session_key = None
-                return []
+    def list_cards(
+        self,
+        filter_value: str = "",
+        contains: int = 0,
+        number_of_cards: int = 50,
+        list_index: str = "USERNAME",
+        list_start_value: str = "0",
+        extended_fields: Optional[str] = None,
+        list_field_filter: Optional[str] = None,
+    ) -> Optional[str]:
+        if not self.session_key:
+            if not self.login():
+                return None
+
+        try:
+            if not filter_value:
+                contains = 0
+                filter_encoded = ""
+            else:
+                filter_encoded = filter_value.replace(" ", "+").replace(":", "[COLON]")
+
+            base = f"{BASE_URL}/Cards?sdKey={self.session_key}"
+            query_parts = [
+                f"filter={filter_encoded}",
+                f"contains={contains}",
+                f"numberOfCards={number_of_cards}",
+                f"listIndex={list_index}",
+                f"listStartValue={list_start_value}",
+            ]
+
+            if extended_fields:
+                query_parts.append(f"extendedFields={extended_fields}")
+            if list_field_filter:
+                query_parts.append(f"listFieldFilter={list_field_filter}")
+
+            url = base + "&" + "&".join(query_parts)
+            response = requests.get(url, timeout=15)
 
             if response.status_code == 200:
-                root = ET.fromstring(response.text)
-                
-                for item in root.findall(".//Row"): 
-                    card_elem = item.find("CardNumber") or item.find("Card")
-                    reader_elem = item.find("ReaderName") or item.find("Reader")
-                    time_elem = item.find("DateTime") or item.find("Time")
-
-                    if card_elem is not None and card_elem.text:
-                        card_num = card_elem.text
-                        reader = reader_elem.text if reader_elem is not None else "Unknown"
-                        
-                        time_str = time_elem.text if time_elem is not None else str(datetime.now())
-                        try:
-                            dt = datetime.now()
-                        except:
-                            dt = datetime.now()
-
-                        event = CardEvent(
-                            card_number=card_num,
-                            reader_name=reader,
-                            timestamp=dt,
-                            raw_data=ET.tostring(item, encoding='unicode')
-                        )
-                        events.append(event)
-                
+                return response.text
+            else:
+                print(
+                    f"List cards failed. Status: {response.status_code}, Body: {response.text}"
+                )
         except Exception as e:
-            print(f"Error fetching events: {e}")
-        
-        return events
+            print(f"List cards exception: {e}")
+
+        return None
+

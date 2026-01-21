@@ -1,8 +1,8 @@
 import time
 from typing import Set, List
-from .connector import SmartServiceConnector
-from .config import POLL_INTERVAL
-from .models import CardEvent
+from connector import SmartServiceConnector
+from config import POLL_INTERVAL
+from models import CardEvent
 
 class EventPoller:
     def __init__(self, connector: SmartServiceConnector):
@@ -14,34 +14,28 @@ class EventPoller:
         self.running = True
         print(f"Starting poller with interval: {POLL_INTERVAL}s")
         
+        try:
+            card_types = self.connector.list_cards()
+            if card_types:
+                print(card_types)
+            else:
+                print("failed fetch card types")
+        except Exception as e:
+            print(f"initial card types fetch error: {e}")
+        
         while self.running:
             try:
-                events = self.connector.get_events()
-                new_events = self.process_events(events)
+                card_data = self.connector.get_card("70321")
                 
-                if new_events:
-                    print(f"By polling, found {len(new_events)} new events:")
-                    for evt in new_events:
-                        print(f" >>> {evt}")
+                if card_data:
+                    print(card_data)
+                else:
+                    print("failed fetch")
                 
             except Exception as e:
-                print(f"Poller loop error: {e}")
+                print(f"poller loop error: {e}")
             
             time.sleep(POLL_INTERVAL)
-
-    def process_events(self, events: List[CardEvent]) -> List[CardEvent]:
-        new_items = []
-        for evt in events:
-            signature = f"{evt.card_number}_{evt.timestamp}_{evt.reader_name}"
-            
-            if signature not in self.seen_events:
-                self.seen_events.add(signature)
-                new_items.append(evt)
-                
-                if len(self.seen_events) > 10000:
-                    self.seen_events.clear()
-        
-        return new_items
 
     def stop(self):
         self.running = False

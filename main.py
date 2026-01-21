@@ -1,5 +1,10 @@
-from kantech_service.connector import SmartServiceConnector
-from kantech_service.poller import EventPoller
+try:
+    from connector import SmartServiceConnector
+    from poller import EventPoller
+except Exception:
+    from connector import SmartServiceConnector
+    from poller import EventPoller
+
 import sys
 
 def main():
@@ -17,7 +22,10 @@ def main():
     except KeyboardInterrupt:
         print("\nStopping service...")
         poller.stop()
+        connector.logout()
         sys.exit(0)
+    finally:
+        connector.logout()
 
 if __name__ == "__main__":
     main()
