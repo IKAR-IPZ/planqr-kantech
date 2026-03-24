@@ -3,11 +3,14 @@ from typing import Set, List
 from connector import SmartServiceConnector
 from config import POLL_INTERVAL
 from models import CardEvent
+from database import DatabaseManager
 
 class EventPoller:
     def __init__(self, connector: SmartServiceConnector):
         self.connector = connector
+        self.db = DatabaseManager()
         self.seen_events: Set[str] = set()
+        self.last_card_data: str | None = None
         self.running = False
 
     def start(self):
@@ -26,9 +29,14 @@ class EventPoller:
         while self.running:
             try:
                 card_data = self.connector.get_last_door_access("49919", 0)
-                
+                #card_data = self.connector.get_component_full_status("49919")
+
                 if card_data:
-                    print(card_data)
+                    if card_data != self.last_card_data:
+                        print(card_data)
+                        # Parse and save access data
+                        self.db.parse_and_save_access_data(card_data)
+                        self.last_card_data = card_data
                 else:
                     print("failed fetch")
                 
